@@ -23,14 +23,15 @@ const fetchRecentWeather = async (location) => {
   }
 }
 
-const checkRecentWeather = async (location) => {
+//returns most recent weather entry
+const previousCityWeatherEntry = async (location) => {
   try{
     const recentCityWeather = await pool.query(
-      "SELECT observation_time FROM weather_location WHERE location = $1",
+      "SELECT observation_time FROM weather_location WHERE location = $1 ORDER BY observation_time DESC",
       [location]
     )
 
-    return recentCityWeather.rows;
+    return recentCityWeather.rows[0];
   } catch (e) {
     console.log("Error" , e)
   }
@@ -57,21 +58,22 @@ app.get('/', async (req, res) => {
     //better way of getting the proper city string would be to format it prior to calling the api, to lessen load on the api. If format the city string, can check db directly instead of calling api to format the city string for us
     
     let updatedWeatherData = await fetchRecentWeather(req.query.location);
-    let previousCityWeather = await checkRecentWeather(updatedWeatherData.location);
+    let previousCityWeather = await previousCityWeatherEntry(updatedWeatherData.location);
     
-
     //check if the db found any weather for that city before, if so, continue 
-    if(previousCityWeather.length) {
+    if(previousCityWeather) {
       let currentDataTime = new Date(updatedWeatherData.observation_time)
-      let lastDataTime = new Date(previousCityWeather[0].observation_time)
+      let lastDataTime = new Date(previousCityWeather.observation_time)
       const diffSeconds = Math.abs(currentDataTime - lastDataTime)/1000;
-
       // check if previous data was from longer than 20mins ago and return that previous data if it is, if not add updated weather and send it back to client
-      diffSeconds <= 20 ? res.send(previousCityWeather) : null;
-
+      if(diffSeconds <= 20) {
+        res.send(previousCityWeather)
+        return;
      }
+    }
       await addUpdatedWeather(updatedWeatherData)
       res.send(updatedWeatherData)
+      return;
   } catch(e) {
     console.log("error", e)
   }
