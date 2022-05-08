@@ -16,7 +16,6 @@ const fetchRecentWeather = async (location) => {
         "temperature" : response.data.data.current_condition[0].temp_C,
         "observation_time": response.data.data.current_condition[0].localObsDateTime,
         "description": response.data.data.current_condition[0].weatherDesc[0].value,
-        "feels_like": response.data.data.current_condition[0].FeelsLikeC
     }
       )
     } catch(error) {
@@ -38,22 +37,41 @@ const checkRecentWeather = async (location) => {
 }
 
 
+const addUpdatedWeather = async (updatedWeatherData) => {
+  try{
+    const weatherInsertResponse = await pool.query(
+      "INSERT INTO weather_location (location, temperature, observation_time, description) VALUES ($1, $2, $3, $4);",
+      [updatedWeatherData.location, updatedWeatherData.temperature, updatedWeatherData.observation_time, updatedWeatherData.description]
+    )
+    return weatherInsertResponse;
+  } catch (e) {
+    console.log("error" , e)
+  }
+}
+
+
 app.get('/', async (req, res) => {
 
   try{
-    let updatedData = await fetchRecentWeather(req.query.location);
-    let recentCityWeather = await checkRecentWeather(updatedData.location);
 
-    let currentDataTime = new Date(updatedData.observation_time)
-    let lastDataTime = new Date(recentCityWeather[0].observation_time)
-    const diffSeconds = Math.abs(currentDataTime - lastDataTime)/1000;
+    //better way of getting the proper city string would be to format it prior to calling the api, to lessen load on the api. If format the city string, can check db directly instead of calling api to format the city string for us
+    
+    let updatedWeatherData = await fetchRecentWeather(req.query.location);
+    let previousCityWeather = await checkRecentWeather(updatedWeatherData.location);
+    
 
-    diffSeconds <= 20 ? res.send(recentCityWeather) : 
-    console.log("recentCityWeather", recentCityWeather[0].observation_time);
+    //check if the db found any weather for that city before, if so, continue 
+    if(previousCityWeather.length) {
+      let currentDataTime = new Date(updatedWeatherData.observation_time)
+      let lastDataTime = new Date(previousCityWeather[0].observation_time)
+      const diffSeconds = Math.abs(currentDataTime - lastDataTime)/1000;
 
+      // check if previous data was from longer than 20mins ago and return that previous data if it is, if not add updated weather and send it back to client
+      diffSeconds <= 20 ? res.send(previousCityWeather) : null;
 
-    res.send(updatedData)
-
+     }
+      await addUpdatedWeather(updatedWeatherData)
+      res.send(updatedWeatherData)
   } catch(e) {
     console.log("error", e)
   }
