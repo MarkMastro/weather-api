@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
-    "test": "mocha"
+    "test": "jest"
   },
-  "type": "Commonjs",
+  "type": "module",
   "dependencies": {
     "axios": "^0.27.2",
+    "chai-http": "^4.3.0",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "dotenv": "^16.0.0",
@@ -17,5 +18,15 @@
     "jade": "~1.11.0",
     "morgan": "~1.9.1",
     "pg": "^8.7.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.17.10",
+    "@babel/preset-env": "^7.17.10",
+    "babel-jest": "^28.1.0",
+    "chai": "^4.3.6",
+    "jest": "^28.1.0",
+    "mocha": "^10.0.0",
+    "regenerator-runtime": "^0.13.9",
+    "supertest": "^6.2.3"
   }
 }
